@@ -1,0 +1,410 @@
+// Prisma Schema for Furniture E-commerce Platform
+// Run: npx prisma migrate dev --name init
+// Run: npx prisma generate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTH
+// ============================================
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  SUPER_ADMIN
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  phone         String?
+  role          UserRole  @default(CUSTOMER)
+  isActive      Boolean   @default(true) @map("is_active")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  
+  // Relations
+  addresses     Address[]
+  orders        Order[]
+  cart          Cart?
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+
+  @@map("users")
+}
+
+model Address {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  label         String?   // "Home", "Office", etc.
+  fullName      String    @map("full_name")
+  phone         String
+  addressLine1  String    @map("address_line_1")
+  addressLine2  String?   @map("address_line_2")
+  city          String
+  region        String    // Lebanese regions: Beirut, Mount Lebanon, etc.
+  postalCode    String?   @map("postal_code")
+  country       String    @default("Lebanon")
+  
+  isDefault     Boolean   @default(false) @map("is_default")
+  
+  // Relations
+  ordersShipping Order[]  @relation("ShippingAddress")
+  ordersBilling  Order[]  @relation("BillingAddress")
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("addresses")
+}
+
+// ============================================
+// PRODUCTS & VARIANTS
+// ============================================
+
+enum FurnitureCategory {
+  TABLES
+  CHAIRS
+  SOFAS
+  BEDS
+  STORAGE
+  LIGHTING
+  OUTDOOR
+  ACCESSORIES
+}
+
+model Product {
+  id              String            @id @default(uuid())
+  sku             String            @unique
+  slug            String            @unique
+  name            String
+  description     String
+  story           String?           // Marketing copy - inspiration, design story
+  
+  category        FurnitureCategory
+  basePrice       Decimal           @map("base_price") @db.Decimal(10, 2)
+  
+  // Dimensions (in cm)
+  width           Decimal?          @db.Decimal(6, 2)
+  height          Decimal?          @db.Decimal(6, 2)
+  depth           Decimal?          @db.Decimal(6, 2)
+  weight          Decimal?          @db.Decimal(6, 2) // in kg
+  
+  // 3D Model
+  modelUrl        String?           @map("model_url")  // GLB/GLTF file URL
+  modelThumbnail  String?           @map("model_thumbnail")
+  
+  // Production
+  leadTimeDays    Int               @default(21) @map("lead_time_days")
+  
+  // Status
+  isActive        Boolean           @default(true) @map("is_active")
+  isFeatured      Boolean           @default(false) @map("is_featured")
+  
+  // Relations
+  images          ProductImage[]
+  variants        ProductVariant[]
+  materialOptions MaterialOption[]
+  colorOptions    ColorOption[]
+  orderItems      OrderItem[]
+  cartItems       CartItem[]
+  
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([isActive, isFeatured])
+  @@map("products")
+}
+
+model ProductImage {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  url         String
+  altText     String?  @map("alt_text")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("product_images")
+}
+
+// Material options (Wood type, fabric type, etc.)
+model MaterialOption {
+  id              String   @id @default(uuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  name            String   // "Oak", "Walnut", "Mahogany", "Velvet", "Leather"
+  type            String   // "wood", "fabric", "metal"
+  priceModifier   Decimal  @default(0) @map("price_modifier") @db.Decimal(10, 2)
+  
+  // For 3D viewer - material/texture file
+  textureUrl      String?  @map("texture_url")
+  
+  isDefault       Boolean  @default(false) @map("is_default")
+  isAvailable     Boolean  @default(true) @map("is_available")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("material_options")
+}
+
+// Color options (for fabrics, finishes, etc.)
+model ColorOption {
+  id              String   @id @default(uuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  name            String   // "Charcoal Grey", "Ocean Blue"
+  hexCode         String   @map("hex_code") // "#333333"
+  priceModifier   Decimal  @default(0) @map("price_modifier") @db.Decimal(10, 2)
+  
+  // For 3D viewer
+  textureUrl      String?  @map("texture_url")
+  
+  isDefault       Boolean  @default(false) @map("is_default")
+  isAvailable     Boolean  @default(true) @map("is_available")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("color_options")
+}
+
+// Pre-configured variants (optional - for common combinations)
+model ProductVariant {
+  id              String   @id @default(uuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  sku             String   @unique
+  name            String   // "Oak + Charcoal Fabric"
+  
+  // Configuration stored as JSON for flexibility
+  configuration   Json     // { materialId: "xxx", colorId: "yyy" }
+  
+  price           Decimal  @db.Decimal(10, 2) // Pre-calculated price
+  
+  // Variant-specific 3D model (if different from base)
+  modelUrl        String?  @map("model_url")
+  imageUrl        String?  @map("image_url")
+  
+  isAvailable     Boolean  @default(true) @map("is_available")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("product_variants")
+}
+
+// ============================================
+// CART
+// ============================================
+
+model Cart {
+  id          String     @id @default(uuid())
+  userId      String     @unique @map("user_id")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  items       CartItem[]
+  
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@map("carts")
+}
+
+model CartItem {
+  id              String   @id @default(uuid())
+  cartId          String   @map("cart_id")
+  cart            Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  // Selected configuration
+  configuration   Json     // { materialId: "xxx", colorId: "yyy" }
+  
+  quantity        Int      @default(1)
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2) // Price at time of adding
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([cartId, productId, configuration])
+  @@map("cart_items")
+}
+
+// ============================================
+// ORDERS & PAYMENTS
+// ============================================
+
+enum OrderStatus {
+  PENDING_PAYMENT     // Waiting for initial payment
+  PAYMENT_FAILED      // Payment attempt failed
+  CONFIRMED           // Payment received, order confirmed
+  IN_PRODUCTION       // Being manufactured
+  READY_FOR_SHIPPING  // Production complete
+  SHIPPED             // Out for delivery
+  DELIVERED           // Successfully delivered
+  CANCELLED           // Order cancelled
+  REFUNDED            // Order refunded
+}
+
+enum PaymentPlan {
+  FULL                // 100% upfront
+  SPLIT_70_30         // 70% upfront, 30% COD
+}
+
+model Order {
+  id                String        @id @default(uuid())
+  orderNumber       String        @unique @map("order_number") // Human-readable: ORD-2024-XXXXX
+  
+  userId            String        @map("user_id")
+  user              User          @relation(fields: [userId], references: [id])
+  
+  // Addresses (snapshot at order time)
+  shippingAddressId String        @map("shipping_address_id")
+  shippingAddress   Address       @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  billingAddressId  String?       @map("billing_address_id")
+  billingAddress    Address?      @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  
+  // Order details
+  items             OrderItem[]
+  
+  // Pricing
+  subtotal          Decimal       @db.Decimal(10, 2)
+  shippingCost      Decimal       @default(0) @map("shipping_cost") @db.Decimal(10, 2)
+  tax               Decimal       @default(0) @db.Decimal(10, 2)
+  total             Decimal       @db.Decimal(10, 2)
+  currency          String        @default("USD")
+  
+  // Payment
+  paymentPlan       PaymentPlan   @default(FULL) @map("payment_plan")
+  payments          Payment[]
+  
+  // Status & tracking
+  status            OrderStatus   @default(PENDING_PAYMENT)
+  statusHistory     Json          @default("[]") @map("status_history") // [{status, timestamp, note}]
+  
+  // Production tracking
+  estimatedDelivery DateTime?     @map("estimated_delivery")
+  
+  // Customer notes
+  notes             String?
+  
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String   @map("order_id")
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  // Snapshot of product at order time
+  productName     String   @map("product_name")
+  productSku      String   @map("product_sku")
+  configuration   Json     // { materialId, colorId, materialName, colorName }
+  
+  quantity        Int
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice      Decimal  @map("total_price") @db.Decimal(10, 2)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("order_items")
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  CRYPTO
+  CASH_ON_DELIVERY
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model Payment {
+  id              String         @id @default(uuid())
+  orderId         String         @map("order_id")
+  order           Order          @relation(fields: [orderId], references: [id])
+  
+  amount          Decimal        @db.Decimal(10, 2)
+  currency        String         @default("USD")
+  
+  method          PaymentMethod
+  status          PaymentStatus  @default(PENDING)
+  
+  // For split payments
+  sequence        Int            @default(1) // 1 = first payment, 2 = COD payment
+  
+  // Provider details
+  provider        String?        // "stripe", "coinbase", "manual"
+  providerRef     String?        @map("provider_ref") // External transaction ID
+  
+  // Metadata
+  metadata        Json?          // Provider-specific data
+  failureReason   String?        @map("failure_reason")
+  
+  processedAt     DateTime?      @map("processed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ============================================
+// ADMIN & AUDIT
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  action      String   // "order.status_changed", "product.created", etc.
+  entityType  String   @map("entity_type") // "order", "product", "user"
+  entityId    String   @map("entity_id")
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
