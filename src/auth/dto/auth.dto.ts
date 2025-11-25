@@ -96,15 +96,6 @@ export class ResetPasswordDto {
   newPassword: string;
 }
 
-// Response DTOs
-export class AuthResponseDto {
-  @ApiProperty()
-  accessToken: string;
-
-  @ApiProperty()
-  user: UserResponseDto;
-}
-
 export class UserResponseDto {
   @ApiProperty()
   id: string;
@@ -126,4 +117,13 @@ export class UserResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+}
+
+// Response DTOs
+export class AuthResponseDto {
+  @ApiProperty()
+  accessToken: string;
+
+  @ApiProperty()
+  user: UserResponseDto;
 }
