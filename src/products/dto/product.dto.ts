@@ -9,7 +9,6 @@ import {
   ValidateNested,
   Min,
   MaxLength,
-  IsUUID,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { FurnitureCategory } from '@prisma/client';
@@ -26,7 +25,7 @@ export class CreateMaterialOptionDto {
 
   @ApiProperty({ example: 'wood' })
   @IsString()
-  type: string; // 'wood', 'fabric', 'metal'
+  type: string;
 
   @ApiPropertyOptional({ example: 200 })
   @IsOptional()
@@ -83,14 +82,30 @@ export class CreateProductDto {
   @MaxLength(200)
   name: string;
 
-  @ApiProperty({ example: 'Elegant dining table inspired by Italian design...' })
+  @ApiPropertyOptional({ example: 'Elegant Italian-inspired dining table' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  tagline?: string;
+
+  @ApiProperty({
+    example: 'Elegant dining table inspired by Italian design...',
+  })
   @IsString()
   description: string;
 
-  @ApiPropertyOptional({ example: 'Inspired by the classic Minotti aesthetic...' })
+  @ApiPropertyOptional({
+    example: 'Inspired by the classic Minotti aesthetic...',
+  })
   @IsOptional()
   @IsString()
   story?: string;
+
+  @ApiPropertyOptional({ example: 'Best Seller' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  badge?: string;
 
   @ApiProperty({ enum: FurnitureCategory, example: 'TABLES' })
   @IsEnum(FurnitureCategory)
@@ -101,7 +116,12 @@ export class CreateProductDto {
   @Min(0)
   basePrice: number;
 
-  // Dimensions
+  @ApiPropertyOptional({ example: 2000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  originalPrice?: number;
+
   @ApiPropertyOptional({ example: 200 })
   @IsOptional()
   @IsNumber()
@@ -126,7 +146,6 @@ export class CreateProductDto {
   @Min(0)
   weight?: number;
 
-  // 3D Model
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -137,14 +156,12 @@ export class CreateProductDto {
   @IsString()
   modelThumbnail?: string;
 
-  // Production
   @ApiPropertyOptional({ example: 21 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   leadTimeDays?: number = 21;
 
-  // Status
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
@@ -155,7 +172,6 @@ export class CreateProductDto {
   @IsBoolean()
   isFeatured?: boolean = false;
 
-  // Options
   @ApiPropertyOptional({ type: [CreateMaterialOptionDto] })
   @IsOptional()
   @IsArray()
@@ -249,10 +265,14 @@ export class ProductQueryDto {
   @Min(1)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ enum: ['price_asc', 'price_desc', 'name_asc', 'newest'] })
+  @ApiPropertyOptional({
+    enum: ['featured', 'price_asc', 'price_desc', 'name_asc', 'newest'],
+    default: 'featured',
+  })
   @IsOptional()
   @IsString()
-  sortBy?: 'price_asc' | 'price_desc' | 'name_asc' | 'newest' = 'newest';
+  sortBy?: 'featured' | 'price_asc' | 'price_desc' | 'name_asc' | 'newest' =
+    'featured';
 }
 
 // ============================================
@@ -335,11 +355,17 @@ export class ProductResponseDto {
   @ApiProperty()
   name: string;
 
+  @ApiPropertyOptional()
+  tagline?: string;
+
   @ApiProperty()
   description: string;
 
   @ApiPropertyOptional()
   story?: string;
+
+  @ApiPropertyOptional()
+  badge?: string;
 
   @ApiProperty({ enum: FurnitureCategory })
   category: FurnitureCategory;
@@ -347,7 +373,9 @@ export class ProductResponseDto {
   @ApiProperty()
   basePrice: number;
 
-  // Dimensions
+  @ApiPropertyOptional()
+  originalPrice?: number;
+
   @ApiPropertyOptional()
   width?: number;
 
@@ -360,7 +388,6 @@ export class ProductResponseDto {
   @ApiPropertyOptional()
   weight?: number;
 
-  // 3D Model
   @ApiPropertyOptional()
   modelUrl?: string;
 
@@ -376,7 +403,6 @@ export class ProductResponseDto {
   @ApiProperty()
   isFeatured: boolean;
 
-  // Relations
   @ApiProperty({ type: [ProductImageResponseDto] })
   images: ProductImageResponseDto[];
 
@@ -385,6 +411,9 @@ export class ProductResponseDto {
 
   @ApiProperty({ type: [ColorOptionResponseDto] })
   colorOptions: ColorOptionResponseDto[];
+
+  @ApiProperty()
+  optionCount: number; // NEW: Calculated field for "Available in X+ fabrics"
 
   @ApiProperty()
   createdAt: Date;
@@ -408,4 +437,34 @@ export class ProductListResponseDto {
 
   @ApiProperty()
   totalPages: number;
+}
+
+// ============================================
+// CATEGORY DTOs (NEW)
+// ============================================
+
+export class CategoryMetadataDto {
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  description: string;
+
+  @ApiProperty()
+  heroImage: string;
+
+  @ApiProperty()
+  introTitle: string;
+
+  @ApiProperty()
+  introText: string;
+
+  @ApiProperty()
+  productCount: number;
 }

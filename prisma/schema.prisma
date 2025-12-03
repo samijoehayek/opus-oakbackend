@@ -54,10 +54,13 @@ model Product {
   sku             String            @unique
   slug            String            @unique
   name            String
+  tagline         String?           // NEW: Short description for cards
   description     String
   story           String?
+  badge           String?           // NEW: "Best Seller", "New", "Sale", etc.
   category        FurnitureCategory
   basePrice       Decimal           @map("base_price") @db.Decimal(10, 2)
+  originalPrice   Decimal?          @map("original_price") @db.Decimal(10, 2) // NEW: For sale items
   width           Decimal?          @db.Decimal(6, 2)
   height          Decimal?          @db.Decimal(6, 2)
   depth           Decimal?          @db.Decimal(6, 2)

@@ -29,6 +29,7 @@ import {
   CreateColorOptionDto,
   ProductResponseDto,
   ProductListResponseDto,
+  CategoryMetadataDto,
 } from './dto';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -61,6 +62,24 @@ export class ProductsController {
     return this.productsService.getFeatured(limit || 8);
   }
 
+  @Get('categories')
+  @ApiOperation({ summary: 'Get all categories with metadata' })
+  @ApiResponse({ status: 200, type: [CategoryMetadataDto] })
+  async getAllCategories(): Promise<CategoryMetadataDto[]> {
+    return this.productsService.getAllCategories();
+  }
+
+  @Get('categories/:slug')
+  @ApiOperation({ summary: 'Get category metadata by slug' })
+  @ApiParam({ name: 'slug', example: 'sofas' })
+  @ApiResponse({ status: 200, type: CategoryMetadataDto })
+  @ApiResponse({ status: 404, description: 'Category not found' })
+  async getCategoryMetadata(
+    @Param('slug') slug: string,
+  ): Promise<CategoryMetadataDto> {
+    return this.productsService.getCategoryMetadata(slug);
+  }
+
   @Get('category/:category')
   @ApiOperation({ summary: 'Get products by category' })
   @ApiParam({
@@ -77,12 +96,22 @@ export class ProductsController {
     ],
   })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: ['featured', 'price_asc', 'price_desc', 'newest'],
+  })
   @ApiResponse({ status: 200, type: [ProductResponseDto] })
   async getByCategory(
     @Param('category') category: string,
     @Query('limit') limit?: number,
+    @Query('sortBy') sortBy?: string,
   ): Promise<ProductResponseDto[]> {
-    return this.productsService.getByCategory(category, limit || 20);
+    return this.productsService.getByCategory(
+      category,
+      limit || 50,
+      sortBy || 'featured',
+    );
   }
 
   @Get(':idOrSlug')
