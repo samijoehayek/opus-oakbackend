@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// USER & AUTH
+// ============================================
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -23,6 +27,8 @@ model User {
   addresses     Address[]
   cart          Cart?
   orders        Order[]
+  reviews       ProductReview[]
+  wishlist      WishlistItem[]
 
   @@map("users")
 }
@@ -49,38 +55,81 @@ model Address {
   @@map("addresses")
 }
 
+// ============================================
+// PRODUCTS
+// ============================================
+
 model Product {
   id              String            @id @default(uuid())
   sku             String            @unique
   slug            String            @unique
   name            String
-  tagline         String?           // NEW: Short description for cards
+  tagline         String?
   description     String
+  longDescription String?           @map("long_description")
   story           String?
-  badge           String?           // NEW: "Best Seller", "New", "Sale", etc.
+  badge           String?
   category        FurnitureCategory
+  subcategory     String?
   basePrice       Decimal           @map("base_price") @db.Decimal(10, 2)
-  originalPrice   Decimal?          @map("original_price") @db.Decimal(10, 2) // NEW: For sale items
+  originalPrice   Decimal?          @map("original_price") @db.Decimal(10, 2)
+  
+  // Dimensions (default/base)
   width           Decimal?          @db.Decimal(6, 2)
   height          Decimal?          @db.Decimal(6, 2)
   depth           Decimal?          @db.Decimal(6, 2)
   weight          Decimal?          @db.Decimal(6, 2)
+  
+  // 3D Model
   modelUrl        String?           @map("model_url")
   modelThumbnail  String?           @map("model_thumbnail")
+  
+  // Production & Delivery
   leadTimeDays    Int               @default(21) @map("lead_time_days")
+  deliveryPrice   Decimal           @default(0) @map("delivery_price") @db.Decimal(10, 2)
+  deliveryInfo    String?           @map("delivery_info")
+  
+  // Returns & Warranty
+  returnDays      Int               @default(14) @map("return_days")
+  returnInfo      String?           @map("return_info")
+  warrantyYears   Int               @default(2) @map("warranty_years")
+  warrantyInfo    String?           @map("warranty_info")
+  
+  // Additional Info
+  assembly        String?
+  madeIn          String?           @map("made_in")
+  careInstructions String[]         @map("care_instructions")
+  
+  // Status
   isActive        Boolean           @default(true) @map("is_active")
   isFeatured      Boolean           @default(false) @map("is_featured")
+  
+  // Timestamps
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
+  
+  // Relations
+  images          ProductImage[]
+  sizes           ProductSize[]
+  fabricCategories FabricCategory[]
+  fabrics         Fabric[]
+  features        ProductFeature[]
+  specifications  ProductSpecification[]
+  reviews         ProductReview[]
+  relatedTo       ProductRelation[] @relation("RelatedFrom")
+  relatedFrom     ProductRelation[] @relation("RelatedTo")
   cartItems       CartItem[]
+  orderItems      OrderItem[]
+  wishlistItems   WishlistItem[]
+  
+  // Legacy - keep for backward compatibility
   colorOptions    ColorOption[]
   materialOptions MaterialOption[]
-  orderItems      OrderItem[]
-  images          ProductImage[]
   variants        ProductVariant[]
 
   @@index([category])
   @@index([isActive, isFeatured])
+  @@index([slug])
   @@map("products")
 }
 
@@ -89,6 +138,7 @@ model ProductImage {
   productId String   @map("product_id")
   url       String
   altText   String?  @map("alt_text")
+  type      ImageType @default(PHOTO)
   sortOrder Int      @default(0) @map("sort_order")
   isPrimary Boolean  @default(false) @map("is_primary")
   createdAt DateTime @default(now()) @map("created_at")
@@ -97,6 +147,127 @@ model ProductImage {
   @@map("product_images")
 }
 
+model ProductSize {
+  id            String   @id @default(uuid())
+  productId     String   @map("product_id")
+  label         String
+  sku           String?
+  price         Decimal  @db.Decimal(10, 2)
+  originalPrice Decimal? @map("original_price") @db.Decimal(10, 2)
+  
+  // Dimensions
+  width         Decimal  @db.Decimal(6, 2)
+  height        Decimal  @db.Decimal(6, 2)
+  depth         Decimal  @db.Decimal(6, 2)
+  seatHeight    Decimal? @map("seat_height") @db.Decimal(6, 2)
+  
+  // Bed dimensions (for sofa beds)
+  bedWidth      Decimal? @map("bed_width") @db.Decimal(6, 2)
+  bedLength     Decimal? @map("bed_length") @db.Decimal(6, 2)
+  
+  // Stock & Lead time
+  inStock       Boolean  @default(true) @map("in_stock")
+  leadTime      String?  @map("lead_time")
+  
+  sortOrder     Int      @default(0) @map("sort_order")
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_sizes")
+}
+
+model FabricCategory {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  name      String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fabrics   Fabric[]
+
+  @@map("fabric_categories")
+}
+
+model Fabric {
+  id               String          @id @default(uuid())
+  productId        String          @map("product_id")
+  fabricCategoryId String          @map("fabric_category_id")
+  name             String
+  hexColor         String          @map("hex_color")
+  textureUrl       String?         @map("texture_url")
+  price            Decimal         @default(0) @db.Decimal(10, 2)
+  inStock          Boolean         @default(true) @map("in_stock")
+  sortOrder        Int             @default(0) @map("sort_order")
+  isDefault        Boolean         @default(false) @map("is_default")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  product          Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fabricCategory   FabricCategory  @relation(fields: [fabricCategoryId], references: [id], onDelete: Cascade)
+
+  @@map("fabrics")
+}
+
+model ProductFeature {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  icon        String
+  title       String
+  description String
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_features")
+}
+
+model ProductSpecification {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  label     String
+  value     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_specifications")
+}
+
+model ProductReview {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  userId    String?  @map("user_id")
+  author    String
+  email     String?
+  rating    Decimal  @db.Decimal(2, 1)
+  title     String
+  content   String
+  verified  Boolean  @default(false)
+  helpful   Int      @default(0)
+  status    ReviewStatus @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, status])
+  @@map("product_reviews")
+}
+
+model ProductRelation {
+  id              String   @id @default(uuid())
+  productId       String   @map("product_id")
+  relatedProductId String  @map("related_product_id")
+  relationType    RelationType @default(SIMILAR) @map("relation_type")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  product         Product  @relation("RelatedFrom", fields: [productId], references: [id], onDelete: Cascade)
+  relatedProduct  Product  @relation("RelatedTo", fields: [relatedProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedProductId])
+  @@map("product_relations")
+}
+
+// Legacy models - keep for backward compatibility
 model MaterialOption {
   id            String   @id @default(uuid())
   productId     String   @map("product_id")
@@ -142,6 +313,26 @@ model ProductVariant {
 
   @@map("product_variants")
 }
+
+// ============================================
+// WISHLIST
+// ============================================
+
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
+// ============================================
+// CART & ORDERS
+// ============================================
 
 model Cart {
   id        String     @id @default(uuid())
@@ -239,6 +430,10 @@ model Payment {
   @@map("payments")
 }
 
+// ============================================
+// AUDIT
+// ============================================
+
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String?  @map("user_id")
@@ -257,6 +452,10 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ============================================
+// ENUMS
+// ============================================
+
 enum UserRole {
   CUSTOMER
   ADMIN
@@ -272,6 +471,27 @@ enum FurnitureCategory {
   LIGHTING
   OUTDOOR
   ACCESSORIES
+}
+
+enum ImageType {
+  PHOTO
+  VIDEO_THUMBNAIL
+  LIFESTYLE
+  DETAIL
+  DIMENSION
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RelationType {
+  SIMILAR
+  COMPLEMENTARY
+  UPSELL
+  CROSS_SELL
 }
 
 enum OrderStatus {

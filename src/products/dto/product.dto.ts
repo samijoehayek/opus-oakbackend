@@ -9,187 +9,21 @@ import {
   ValidateNested,
   Min,
   MaxLength,
+  IsUUID,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { FurnitureCategory } from '@prisma/client';
+import {
+  FurnitureCategory,
+  ImageType,
+  ReviewStatus,
+  RelationType,
+} from '@prisma/client';
 
 // ============================================
-// CREATE / UPDATE DTOs
+// NESTED CREATE DTOs
 // ============================================
 
-export class CreateMaterialOptionDto {
-  @ApiProperty({ example: 'Oak' })
-  @IsString()
-  @MaxLength(100)
-  name: string;
-
-  @ApiProperty({ example: 'wood' })
-  @IsString()
-  type: string;
-
-  @ApiPropertyOptional({ example: 200 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  priceModifier?: number = 0;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  textureUrl?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isDefault?: boolean = false;
-}
-
-export class CreateColorOptionDto {
-  @ApiProperty({ example: 'Charcoal Grey' })
-  @IsString()
-  @MaxLength(100)
-  name: string;
-
-  @ApiProperty({ example: '#333333' })
-  @IsString()
-  hexCode: string;
-
-  @ApiPropertyOptional({ example: 0 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  priceModifier?: number = 0;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  textureUrl?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isDefault?: boolean = false;
-}
-
-export class CreateProductDto {
-  @ApiProperty({ example: 'TBL-001' })
-  @IsString()
-  @MaxLength(50)
-  sku: string;
-
-  @ApiProperty({ example: 'Milano Dining Table' })
-  @IsString()
-  @MaxLength(200)
-  name: string;
-
-  @ApiPropertyOptional({ example: 'Elegant Italian-inspired dining table' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(300)
-  tagline?: string;
-
-  @ApiProperty({
-    example: 'Elegant dining table inspired by Italian design...',
-  })
-  @IsString()
-  description: string;
-
-  @ApiPropertyOptional({
-    example: 'Inspired by the classic Minotti aesthetic...',
-  })
-  @IsOptional()
-  @IsString()
-  story?: string;
-
-  @ApiPropertyOptional({ example: 'Best Seller' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  badge?: string;
-
-  @ApiProperty({ enum: FurnitureCategory, example: 'TABLES' })
-  @IsEnum(FurnitureCategory)
-  category: FurnitureCategory;
-
-  @ApiProperty({ example: 1600 })
-  @IsNumber()
-  @Min(0)
-  basePrice: number;
-
-  @ApiPropertyOptional({ example: 2000 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  originalPrice?: number;
-
-  @ApiPropertyOptional({ example: 200 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  width?: number;
-
-  @ApiPropertyOptional({ example: 75 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  height?: number;
-
-  @ApiPropertyOptional({ example: 100 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  depth?: number;
-
-  @ApiPropertyOptional({ example: 45 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  weight?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  modelUrl?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  modelThumbnail?: string;
-
-  @ApiPropertyOptional({ example: 21 })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  leadTimeDays?: number = 21;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean = true;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isFeatured?: boolean = false;
-
-  @ApiPropertyOptional({ type: [CreateMaterialOptionDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateMaterialOptionDto)
-  materialOptions?: CreateMaterialOptionDto[];
-
-  @ApiPropertyOptional({ type: [CreateColorOptionDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateColorOptionDto)
-  colorOptions?: CreateColorOptionDto[];
-}
-
-export class UpdateProductDto extends PartialType(CreateProductDto) {}
-
-export class AddProductImageDto {
+export class CreateProductImageDto {
   @ApiProperty()
   @IsString()
   url: string;
@@ -198,6 +32,11 @@ export class AddProductImageDto {
   @IsOptional()
   @IsString()
   altText?: string;
+
+  @ApiPropertyOptional({ enum: ImageType, default: 'PHOTO' })
+  @IsOptional()
+  @IsEnum(ImageType)
+  type?: ImageType = ImageType.PHOTO;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -209,6 +48,358 @@ export class AddProductImageDto {
   @IsBoolean()
   isPrimary?: boolean = false;
 }
+
+export class CreateProductSizeDto {
+  @ApiProperty({ example: '3 Seater' })
+  @IsString()
+  label: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @ApiProperty({ example: 2500 })
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @ApiPropertyOptional({ example: 3000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  originalPrice?: number;
+
+  @ApiProperty({ example: 220 })
+  @IsNumber()
+  width: number;
+
+  @ApiProperty({ example: 85 })
+  @IsNumber()
+  height: number;
+
+  @ApiProperty({ example: 95 })
+  @IsNumber()
+  depth: number;
+
+  @ApiPropertyOptional({ example: 45 })
+  @IsOptional()
+  @IsNumber()
+  seatHeight?: number;
+
+  @ApiPropertyOptional({ example: 140 })
+  @IsOptional()
+  @IsNumber()
+  bedWidth?: number;
+
+  @ApiPropertyOptional({ example: 190 })
+  @IsOptional()
+  @IsNumber()
+  bedLength?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  inStock?: boolean = true;
+
+  @ApiPropertyOptional({ example: '6-8 weeks' })
+  @IsOptional()
+  @IsString()
+  leadTime?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean = false;
+}
+
+export class CreateFabricDto {
+  @ApiProperty({ example: 'Charcoal Grey' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: '#4A4A4A' })
+  @IsString()
+  hexColor: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  textureUrl?: string;
+
+  @ApiPropertyOptional({ example: 100 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  inStock?: boolean = true;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean = false;
+}
+
+export class CreateFabricCategoryDto {
+  @ApiProperty({ example: 'Cotton' })
+  @IsString()
+  name: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number = 0;
+
+  @ApiPropertyOptional({ type: [CreateFabricDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateFabricDto)
+  fabrics?: CreateFabricDto[];
+}
+
+export class CreateProductFeatureDto {
+  @ApiProperty({ example: 'hammer' })
+  @IsString()
+  icon: string;
+
+  @ApiProperty({ example: 'Handcrafted' })
+  @IsString()
+  title: string;
+
+  @ApiProperty({ example: 'Made by skilled artisans' })
+  @IsString()
+  description: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number = 0;
+}
+
+export class CreateProductSpecificationDto {
+  @ApiProperty({ example: 'Frame Material' })
+  @IsString()
+  label: string;
+
+  @ApiProperty({ example: 'Solid oak' })
+  @IsString()
+  value: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number = 0;
+}
+
+// ============================================
+// MAIN CREATE/UPDATE DTOs
+// ============================================
+
+export class CreateProductDto {
+  @ApiProperty({ example: 'SOF-001' })
+  @IsString()
+  @MaxLength(50)
+  sku: string;
+
+  @ApiProperty({ example: 'The Belmont Sofa' })
+  @IsString()
+  @MaxLength(200)
+  name: string;
+
+  @ApiPropertyOptional({ example: 'Timeless comfort meets modern elegance' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  tagline?: string;
+
+  @ApiProperty({ example: 'A beautifully crafted sofa...' })
+  @IsString()
+  description: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  story?: string;
+
+  @ApiPropertyOptional({ example: 'Best Seller' })
+  @IsOptional()
+  @IsString()
+  badge?: string;
+
+  @ApiProperty({ enum: FurnitureCategory, example: 'SOFAS' })
+  @IsEnum(FurnitureCategory)
+  category: FurnitureCategory;
+
+  @ApiPropertyOptional({ example: 'Sofa Beds' })
+  @IsOptional()
+  @IsString()
+  subcategory?: string;
+
+  @ApiProperty({ example: 2500 })
+  @IsNumber()
+  @Min(0)
+  basePrice: number;
+
+  @ApiPropertyOptional({ example: 3000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  originalPrice?: number;
+
+  // Dimensions
+  @ApiPropertyOptional({ example: 220 })
+  @IsOptional()
+  @IsNumber()
+  width?: number;
+
+  @ApiPropertyOptional({ example: 85 })
+  @IsOptional()
+  @IsNumber()
+  height?: number;
+
+  @ApiPropertyOptional({ example: 95 })
+  @IsOptional()
+  @IsNumber()
+  depth?: number;
+
+  @ApiPropertyOptional({ example: 45 })
+  @IsOptional()
+  @IsNumber()
+  weight?: number;
+
+  // 3D Model
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  modelUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  modelThumbnail?: string;
+
+  // Delivery & Returns
+  @ApiPropertyOptional({ example: 21 })
+  @IsOptional()
+  @IsNumber()
+  leadTimeDays?: number = 21;
+
+  @ApiPropertyOptional({ example: 150 })
+  @IsOptional()
+  @IsNumber()
+  deliveryPrice?: number = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  deliveryInfo?: string;
+
+  @ApiPropertyOptional({ example: 14 })
+  @IsOptional()
+  @IsNumber()
+  returnDays?: number = 14;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  returnInfo?: string;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  warrantyYears?: number = 2;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  warrantyInfo?: string;
+
+  // Additional Info
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  assembly?: string;
+
+  @ApiPropertyOptional({ example: 'Lebanon' })
+  @IsOptional()
+  @IsString()
+  madeIn?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  careInstructions?: string[];
+
+  // Status
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean = true;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean = false;
+
+  // Nested relations
+  @ApiPropertyOptional({ type: [CreateProductImageDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductImageDto)
+  images?: CreateProductImageDto[];
+
+  @ApiPropertyOptional({ type: [CreateProductSizeDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductSizeDto)
+  sizes?: CreateProductSizeDto[];
+
+  @ApiPropertyOptional({ type: [CreateFabricCategoryDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateFabricCategoryDto)
+  fabricCategories?: CreateFabricCategoryDto[];
+
+  @ApiPropertyOptional({ type: [CreateProductFeatureDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductFeatureDto)
+  features?: CreateProductFeatureDto[];
+
+  @ApiPropertyOptional({ type: [CreateProductSpecificationDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductSpecificationDto)
+  specifications?: CreateProductSpecificationDto[];
+}
+
+export class UpdateProductDto extends PartialType(CreateProductDto) {}
 
 // ============================================
 // QUERY DTOs
@@ -279,52 +470,6 @@ export class ProductQueryDto {
 // RESPONSE DTOs
 // ============================================
 
-export class MaterialOptionResponseDto {
-  @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  name: string;
-
-  @ApiProperty()
-  type: string;
-
-  @ApiProperty()
-  priceModifier: number;
-
-  @ApiPropertyOptional()
-  textureUrl?: string;
-
-  @ApiProperty()
-  isDefault: boolean;
-
-  @ApiProperty()
-  isAvailable: boolean;
-}
-
-export class ColorOptionResponseDto {
-  @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  name: string;
-
-  @ApiProperty()
-  hexCode: string;
-
-  @ApiProperty()
-  priceModifier: number;
-
-  @ApiPropertyOptional()
-  textureUrl?: string;
-
-  @ApiProperty()
-  isDefault: boolean;
-
-  @ApiProperty()
-  isAvailable: boolean;
-}
-
 export class ProductImageResponseDto {
   @ApiProperty()
   id: string;
@@ -335,6 +480,9 @@ export class ProductImageResponseDto {
   @ApiPropertyOptional()
   altText?: string;
 
+  @ApiProperty({ enum: ImageType })
+  type: ImageType;
+
   @ApiProperty()
   sortOrder: number;
 
@@ -342,7 +490,161 @@ export class ProductImageResponseDto {
   isPrimary: boolean;
 }
 
-export class ProductResponseDto {
+export class ProductSizeResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  label: string;
+
+  @ApiPropertyOptional()
+  sku?: string;
+
+  @ApiProperty()
+  price: number;
+
+  @ApiPropertyOptional()
+  originalPrice?: number;
+
+  @ApiProperty()
+  dimensions: {
+    width: number;
+    height: number;
+    depth: number;
+    seatHeight?: number;
+  };
+
+  @ApiPropertyOptional()
+  bedDimensions?: {
+    width: number;
+    length: number;
+  };
+
+  @ApiProperty()
+  inStock: boolean;
+
+  @ApiPropertyOptional()
+  leadTime?: string;
+
+  @ApiProperty()
+  sortOrder: number;
+
+  @ApiProperty()
+  isDefault: boolean;
+}
+
+export class FabricResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  hexColor: string;
+
+  @ApiPropertyOptional()
+  textureUrl?: string;
+
+  @ApiProperty()
+  price: number;
+
+  @ApiProperty()
+  inStock: boolean;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  sortOrder: number;
+
+  @ApiProperty()
+  isDefault: boolean;
+}
+
+export class FabricCategoryResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  sortOrder: number;
+}
+
+export class ProductFeatureResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  icon: string;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  description: string;
+}
+
+export class ProductSpecificationResponseDto {
+  @ApiProperty()
+  label: string;
+
+  @ApiProperty()
+  value: string;
+}
+
+export class ProductReviewResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  author: string;
+
+  @ApiProperty()
+  rating: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  content: string;
+
+  @ApiProperty()
+  verified: boolean;
+
+  @ApiProperty()
+  helpful: number;
+
+  @ApiProperty()
+  date: string;
+}
+
+export class RelatedProductResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  price: number;
+
+  @ApiPropertyOptional()
+  originalPrice?: number;
+
+  @ApiProperty()
+  imageUrl: string;
+}
+
+export class ProductDetailResponseDto {
   @ApiProperty()
   id: string;
 
@@ -362,13 +664,19 @@ export class ProductResponseDto {
   description: string;
 
   @ApiPropertyOptional()
+  longDescription?: string;
+
+  @ApiPropertyOptional()
   story?: string;
 
   @ApiPropertyOptional()
   badge?: string;
 
-  @ApiProperty({ enum: FurnitureCategory })
-  category: FurnitureCategory;
+  @ApiProperty()
+  category: string;
+
+  @ApiPropertyOptional()
+  subcategory?: string;
 
   @ApiProperty()
   basePrice: number;
@@ -376,44 +684,84 @@ export class ProductResponseDto {
   @ApiPropertyOptional()
   originalPrice?: number;
 
-  @ApiPropertyOptional()
-  width?: number;
+  // Images
+  @ApiProperty({ type: [ProductImageResponseDto] })
+  images: ProductImageResponseDto[];
 
-  @ApiPropertyOptional()
-  height?: number;
+  // Sizes
+  @ApiProperty({ type: [ProductSizeResponseDto] })
+  sizes: ProductSizeResponseDto[];
 
-  @ApiPropertyOptional()
-  depth?: number;
+  // Fabrics
+  @ApiProperty({ type: [FabricCategoryResponseDto] })
+  fabricCategories: FabricCategoryResponseDto[];
 
-  @ApiPropertyOptional()
-  weight?: number;
+  @ApiProperty({ type: [FabricResponseDto] })
+  fabrics: FabricResponseDto[];
 
-  @ApiPropertyOptional()
-  modelUrl?: string;
+  // Features & Specs
+  @ApiProperty({ type: [ProductFeatureResponseDto] })
+  features: ProductFeatureResponseDto[];
 
-  @ApiPropertyOptional()
-  modelThumbnail?: string;
+  @ApiProperty({ type: [ProductSpecificationResponseDto] })
+  specifications: ProductSpecificationResponseDto[];
+
+  // Delivery & Returns
+  @ApiProperty()
+  deliveryInfo: {
+    price: number;
+    description?: string;
+  };
 
   @ApiProperty()
-  leadTimeDays: number;
+  returns: {
+    days: number;
+    description?: string;
+  };
 
+  @ApiProperty()
+  warranty: {
+    years: number;
+    description?: string;
+  };
+
+  // Additional
+  @ApiPropertyOptional()
+  assembly?: string;
+
+  @ApiPropertyOptional()
+  madeIn?: string;
+
+  @ApiProperty({ type: [String] })
+  careInstructions: string[];
+
+  // Reviews
+  @ApiProperty()
+  averageRating: number;
+
+  @ApiProperty()
+  totalReviews: number;
+
+  @ApiProperty({ type: [ProductReviewResponseDto] })
+  reviews: ProductReviewResponseDto[];
+
+  // Related
+  @ApiProperty({ type: [RelatedProductResponseDto] })
+  relatedProducts: RelatedProductResponseDto[];
+
+  // Badges (from badge field + derived)
+  @ApiProperty({ type: [String] })
+  badges: string[];
+
+  // Status
   @ApiProperty()
   isActive: boolean;
 
   @ApiProperty()
   isFeatured: boolean;
 
-  @ApiProperty({ type: [ProductImageResponseDto] })
-  images: ProductImageResponseDto[];
-
-  @ApiProperty({ type: [MaterialOptionResponseDto] })
-  materialOptions: MaterialOptionResponseDto[];
-
-  @ApiProperty({ type: [ColorOptionResponseDto] })
-  colorOptions: ColorOptionResponseDto[];
-
   @ApiProperty()
-  optionCount: number; // NEW: Calculated field for "Available in X+ fabrics"
+  leadTimeDays: number;
 
   @ApiProperty()
   createdAt: Date;
@@ -422,9 +770,57 @@ export class ProductResponseDto {
   updatedAt: Date;
 }
 
+// List response (lighter version)
+export class ProductListItemResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  sku: string;
+
+  @ApiProperty()
+  slug: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiPropertyOptional()
+  tagline?: string;
+
+  @ApiProperty()
+  description: string;
+
+  @ApiPropertyOptional()
+  badge?: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  basePrice: number;
+
+  @ApiPropertyOptional()
+  originalPrice?: number;
+
+  @ApiProperty({ type: [ProductImageResponseDto] })
+  images: ProductImageResponseDto[];
+
+  @ApiProperty()
+  optionCount: number;
+
+  @ApiProperty()
+  isActive: boolean;
+
+  @ApiProperty()
+  isFeatured: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
+}
+
 export class ProductListResponseDto {
-  @ApiProperty({ type: [ProductResponseDto] })
-  products: ProductResponseDto[];
+  @ApiProperty({ type: [ProductListItemResponseDto] })
+  products: ProductListItemResponseDto[];
 
   @ApiProperty()
   total: number;
@@ -439,10 +835,7 @@ export class ProductListResponseDto {
   totalPages: number;
 }
 
-// ============================================
-// CATEGORY DTOs (NEW)
-// ============================================
-
+// Category metadata
 export class CategoryMetadataDto {
   @ApiProperty()
   slug: string;

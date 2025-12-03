@@ -24,11 +24,9 @@ import {
   CreateProductDto,
   UpdateProductDto,
   ProductQueryDto,
-  AddProductImageDto,
-  CreateMaterialOptionDto,
-  CreateColorOptionDto,
-  ProductResponseDto,
+  ProductDetailResponseDto,
   ProductListResponseDto,
+  ProductListItemResponseDto,
   CategoryMetadataDto,
 } from './dto';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -55,10 +53,10 @@ export class ProductsController {
   @Get('featured')
   @ApiOperation({ summary: 'Get featured products for homepage' })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, type: [ProductResponseDto] })
+  @ApiResponse({ status: 200, type: [ProductListItemResponseDto] })
   async getFeatured(
     @Query('limit') limit?: number,
-  ): Promise<ProductResponseDto[]> {
+  ): Promise<ProductListItemResponseDto[]> {
     return this.productsService.getFeatured(limit || 8);
   }
 
@@ -101,12 +99,12 @@ export class ProductsController {
     required: false,
     enum: ['featured', 'price_asc', 'price_desc', 'newest'],
   })
-  @ApiResponse({ status: 200, type: [ProductResponseDto] })
+  @ApiResponse({ status: 200, type: [ProductListItemResponseDto] })
   async getByCategory(
     @Param('category') category: string,
     @Query('limit') limit?: number,
     @Query('sortBy') sortBy?: string,
-  ): Promise<ProductResponseDto[]> {
+  ): Promise<ProductListItemResponseDto[]> {
     return this.productsService.getByCategory(
       category,
       limit || 50,
@@ -115,14 +113,57 @@ export class ProductsController {
   }
 
   @Get(':idOrSlug')
-  @ApiOperation({ summary: 'Get a product by ID or slug' })
+  @ApiOperation({ summary: 'Get a product by ID or slug (basic info)' })
   @ApiParam({ name: 'idOrSlug', description: 'Product ID (UUID) or slug' })
-  @ApiResponse({ status: 200, type: ProductResponseDto })
+  @ApiResponse({ status: 200, type: ProductListItemResponseDto })
   @ApiResponse({ status: 404, description: 'Product not found' })
   async findOne(
     @Param('idOrSlug') idOrSlug: string,
-  ): Promise<ProductResponseDto> {
+  ): Promise<ProductListItemResponseDto> {
     return this.productsService.findOne(idOrSlug);
+  }
+
+  @Get(':idOrSlug/detail')
+  @ApiOperation({ summary: 'Get full product details by ID or slug' })
+  @ApiParam({ name: 'idOrSlug', description: 'Product ID (UUID) or slug' })
+  @ApiResponse({ status: 200, type: ProductDetailResponseDto })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async findOneDetail(
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<ProductDetailResponseDto> {
+    return this.productsService.findOneDetail(idOrSlug);
+  }
+
+  // ============================================
+  // REVIEWS (PUBLIC)
+  // ============================================
+
+  @Post(':id/reviews')
+  @ApiOperation({ summary: 'Add a review to a product' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 201, type: ProductDetailResponseDto })
+  async addReview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body()
+    body: {
+      author: string;
+      email?: string;
+      rating: number;
+      title: string;
+      content: string;
+    },
+  ): Promise<ProductDetailResponseDto> {
+    return this.productsService.addReview(id, body);
+  }
+
+  @Post('reviews/:reviewId/helpful')
+  @ApiOperation({ summary: 'Mark a review as helpful' })
+  @ApiParam({ name: 'reviewId', type: String })
+  @ApiResponse({ status: 200 })
+  async markReviewHelpful(
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
+  ): Promise<{ helpful: number }> {
+    return this.productsService.markReviewHelpful(reviewId);
   }
 
   // ============================================
@@ -134,14 +175,16 @@ export class ProductsController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new product (Admin only)' })
-  @ApiResponse({ status: 201, type: ProductResponseDto })
+  @ApiResponse({ status: 201, type: ProductDetailResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
     description: 'Forbidden - Admin access required',
   })
   @ApiResponse({ status: 409, description: 'SKU or slug already exists' })
-  async create(@Body() dto: CreateProductDto): Promise<ProductResponseDto> {
+  async create(
+    @Body() dto: CreateProductDto,
+  ): Promise<ProductDetailResponseDto> {
     return this.productsService.create(dto);
   }
 
@@ -151,12 +194,12 @@ export class ProductsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a product (Admin only)' })
   @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 200, type: ProductResponseDto })
+  @ApiResponse({ status: 200, type: ProductDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Product not found' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateProductDto,
-  ): Promise<ProductResponseDto> {
+  ): Promise<ProductDetailResponseDto> {
     return this.productsService.update(id, dto);
   }
 
@@ -174,62 +217,28 @@ export class ProductsController {
     return this.productsService.remove(id);
   }
 
-  // ============================================
-  // PRODUCT OPTIONS (ADMIN)
-  // ============================================
-
-  @Post(':id/images')
+  @Post(':id/related/:relatedId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Add image to product (Admin only)' })
+  @ApiOperation({ summary: 'Add related product (Admin only)' })
   @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 201, type: ProductResponseDto })
-  async addImage(
+  @ApiParam({ name: 'relatedId', type: String })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['SIMILAR', 'COMPLEMENTARY', 'UPSELL', 'CROSS_SELL'],
+  })
+  @ApiResponse({ status: 201, type: ProductDetailResponseDto })
+  async addRelatedProduct(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: AddProductImageDto,
-  ): Promise<ProductResponseDto> {
-    return this.productsService.addImage(id, dto);
-  }
-
-  @Delete(':id/images/:imageId')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remove image from product (Admin only)' })
-  @ApiResponse({ status: 200, type: ProductResponseDto })
-  async removeImage(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('imageId', ParseUUIDPipe) imageId: string,
-  ): Promise<ProductResponseDto> {
-    return this.productsService.removeImage(id, imageId);
-  }
-
-  @Post(':id/materials')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Add material option to product (Admin only)' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 201, type: ProductResponseDto })
-  async addMaterialOption(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: CreateMaterialOptionDto,
-  ): Promise<ProductResponseDto> {
-    return this.productsService.addMaterialOption(id, dto);
-  }
-
-  @Post(':id/colors')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Add color option to product (Admin only)' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 201, type: ProductResponseDto })
-  async addColorOption(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: CreateColorOptionDto,
-  ): Promise<ProductResponseDto> {
-    return this.productsService.addColorOption(id, dto);
+    @Param('relatedId', ParseUUIDPipe) relatedId: string,
+    @Query('type') type?: 'SIMILAR' | 'COMPLEMENTARY' | 'UPSELL' | 'CROSS_SELL',
+  ): Promise<ProductDetailResponseDto> {
+    return this.productsService.addRelatedProduct(
+      id,
+      relatedId,
+      type || 'SIMILAR',
+    );
   }
 }
