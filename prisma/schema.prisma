@@ -80,7 +80,7 @@ model Product {
   depth           Decimal?          @db.Decimal(6, 2)
   weight          Decimal?          @db.Decimal(6, 2)
   
-  // 3D Model
+  // DEPRECATED - Use ProductModel instead
   modelUrl        String?           @map("model_url")
   modelThumbnail  String?           @map("model_thumbnail")
   
@@ -110,6 +110,7 @@ model Product {
   
   // Relations
   images          ProductImage[]
+  model           ProductModel?     // NEW: 3D Model relation
   sizes           ProductSize[]
   fabricCategories FabricCategory[]
   fabrics         Fabric[]
@@ -122,7 +123,7 @@ model Product {
   orderItems      OrderItem[]
   wishlistItems   WishlistItem[]
   
-  // Legacy - keep for backward compatibility
+  // Legacy
   colorOptions    ColorOption[]
   materialOptions MaterialOption[]
   variants        ProductVariant[]
@@ -131,6 +132,57 @@ model Product {
   @@index([isActive, isFeatured])
   @@index([slug])
   @@map("products")
+}
+
+// NEW: 3D Model for products
+model ProductModel {
+  id                String   @id @default(uuid())
+  productId         String   @unique @map("product_id")
+  
+  // Model files
+  lowPolyUrl        String   @map("low_poly_url")        // Optimized for quick loading
+  highPolyUrl       String?  @map("high_poly_url")       // Full quality for detailed view
+  
+  // Model metadata
+  format            ModelFormat @default(GLB)
+  fileSizeLowPoly   Int?     @map("file_size_low_poly")  // In bytes
+  fileSizeHighPoly  Int?     @map("file_size_high_poly") // In bytes
+  
+  // Thumbnail/poster for loading state
+  posterUrl         String?  @map("poster_url")
+  
+  // Scene configuration
+  environmentPreset EnvironmentPreset @default(STUDIO) @map("environment_preset")
+  backgroundColor   String?  @map("background_color")    // Hex color or 'transparent'
+  
+  // Camera defaults
+  cameraPositionX   Float    @default(0) @map("camera_position_x")
+  cameraPositionY   Float    @default(1) @map("camera_position_y")
+  cameraPositionZ   Float    @default(3) @map("camera_position_z")
+  cameraTargetX     Float    @default(0) @map("camera_target_x")
+  cameraTargetY     Float    @default(0.5) @map("camera_target_y")
+  cameraTargetZ     Float    @default(0) @map("camera_target_z")
+  
+  // Interaction settings
+  autoRotate        Boolean  @default(true) @map("auto_rotate")
+  autoRotateSpeed   Float    @default(1) @map("auto_rotate_speed")
+  enableZoom        Boolean  @default(true) @map("enable_zoom")
+  enablePan         Boolean  @default(true) @map("enable_pan")
+  minDistance       Float    @default(1) @map("min_distance")
+  maxDistance       Float    @default(10) @map("max_distance")
+  
+  // Scale adjustment
+  scale             Float    @default(1)
+  
+  // Status
+  isActive          Boolean  @default(true) @map("is_active")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_models")
 }
 
 model ProductImage {
@@ -525,4 +577,25 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+enum ModelFormat {
+  GLB
+  GLTF
+  FBX
+  OBJ
+  USDZ
+}
+
+enum EnvironmentPreset {
+  STUDIO
+  APARTMENT
+  CITY
+  DAWN
+  FOREST
+  LOBBY
+  NIGHT
+  PARK
+  SUNSET
+  WAREHOUSE
 }

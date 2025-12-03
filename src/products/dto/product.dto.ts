@@ -207,6 +207,199 @@ export class CreateProductSpecificationDto {
 }
 
 // ============================================
+// 3D MODEL DTOs
+// ============================================
+
+export class CreateProductModelDto {
+  @ApiProperty({ example: 'https://cdn.example.com/models/sofa-low.glb' })
+  @IsString()
+  lowPolyUrl: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/models/sofa-high.glb',
+  })
+  @IsOptional()
+  @IsString()
+  highPolyUrl?: string;
+
+  @ApiPropertyOptional({
+    enum: ['GLB', 'GLTF', 'FBX', 'OBJ', 'USDZ'],
+    default: 'GLB',
+  })
+  @IsOptional()
+  @IsEnum(['GLB', 'GLTF', 'FBX', 'OBJ', 'USDZ'])
+  format?: string = 'GLB';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  fileSizeLowPoly?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  fileSizeHighPoly?: number;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/models/sofa-poster.jpg',
+  })
+  @IsOptional()
+  @IsString()
+  posterUrl?: string;
+
+  @ApiPropertyOptional({
+    enum: [
+      'STUDIO',
+      'APARTMENT',
+      'CITY',
+      'DAWN',
+      'FOREST',
+      'LOBBY',
+      'NIGHT',
+      'PARK',
+      'SUNSET',
+      'WAREHOUSE',
+    ],
+    default: 'STUDIO',
+  })
+  @IsOptional()
+  @IsString()
+  environmentPreset?: string = 'STUDIO';
+
+  @ApiPropertyOptional({ example: '#f5f5f5' })
+  @IsOptional()
+  @IsString()
+  backgroundColor?: string;
+
+  // Camera position
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsNumber()
+  cameraPositionX?: number = 0;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
+  cameraPositionY?: number = 1;
+
+  @ApiPropertyOptional({ default: 3 })
+  @IsOptional()
+  @IsNumber()
+  cameraPositionZ?: number = 3;
+
+  // Camera target
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsNumber()
+  cameraTargetX?: number = 0;
+
+  @ApiPropertyOptional({ default: 0.5 })
+  @IsOptional()
+  @IsNumber()
+  cameraTargetY?: number = 0.5;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsNumber()
+  cameraTargetZ?: number = 0;
+
+  // Interaction
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  autoRotate?: boolean = true;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
+  autoRotateSpeed?: number = 1;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  enableZoom?: boolean = true;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  enablePan?: boolean = true;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
+  minDistance?: number = 1;
+
+  @ApiPropertyOptional({ default: 10 })
+  @IsOptional()
+  @IsNumber()
+  maxDistance?: number = 10;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
+  scale?: number = 1;
+}
+
+export class ProductModelResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  lowPolyUrl: string;
+
+  @ApiPropertyOptional()
+  highPolyUrl?: string;
+
+  @ApiProperty()
+  format: string;
+
+  @ApiPropertyOptional()
+  fileSizeLowPoly?: number;
+
+  @ApiPropertyOptional()
+  fileSizeHighPoly?: number;
+
+  @ApiPropertyOptional()
+  posterUrl?: string;
+
+  @ApiProperty()
+  environmentPreset: string;
+
+  @ApiPropertyOptional()
+  backgroundColor?: string;
+
+  @ApiProperty()
+  cameraPosition: {
+    x: number;
+    y: number;
+    z: number;
+  };
+
+  @ApiProperty()
+  cameraTarget: {
+    x: number;
+    y: number;
+    z: number;
+  };
+
+  @ApiProperty()
+  controls: {
+    autoRotate: boolean;
+    autoRotateSpeed: number;
+    enableZoom: boolean;
+    enablePan: boolean;
+    minDistance: number;
+    maxDistance: number;
+  };
+
+  @ApiProperty()
+  scale: number;
+
+  @ApiProperty()
+  isActive: boolean;
+}
+
+// ============================================
 // MAIN CREATE/UPDATE DTOs
 // ============================================
 
@@ -397,6 +590,12 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateProductSpecificationDto)
   specifications?: CreateProductSpecificationDto[];
+
+  @ApiPropertyOptional({ type: CreateProductModelDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateProductModelDto)
+  model?: CreateProductModelDto;
 }
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {}
@@ -705,6 +904,9 @@ export class ProductDetailResponseDto {
 
   @ApiProperty({ type: [ProductSpecificationResponseDto] })
   specifications: ProductSpecificationResponseDto[];
+
+  @ApiPropertyOptional({ type: ProductModelResponseDto })
+  model?: ProductModelResponseDto;
 
   // Delivery & Returns
   @ApiProperty()

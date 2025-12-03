@@ -134,12 +134,14 @@ export class ProductsService {
       throw new ConflictException('Product slug already exists');
     }
 
+    // Destructure to separate nested relations from base product data
     const {
       images,
       sizes,
       fabricCategories,
       features,
       specifications,
+      model, // ADD THIS - extract model from dto
       ...productData
     } = dto;
 
@@ -225,7 +227,7 @@ export class ProductsService {
       include: this.getFullProductInclude(),
     });
 
-    // Create fabric categories and fabrics separately (nested create with relation)
+    // Create fabric categories and fabrics separately
     if (fabricCategories?.length) {
       for (const category of fabricCategories) {
         const createdCategory = await this.prisma.fabricCategory.create({
@@ -254,10 +256,39 @@ export class ProductsService {
       }
     }
 
+    // Create 3D model if provided
+    if (model) {
+      await this.prisma.productModel.create({
+        data: {
+          productId: product.id,
+          lowPolyUrl: model.lowPolyUrl,
+          highPolyUrl: model.highPolyUrl,
+          format: (model.format as any) || 'GLB',
+          fileSizeLowPoly: model.fileSizeLowPoly,
+          fileSizeHighPoly: model.fileSizeHighPoly,
+          posterUrl: model.posterUrl,
+          environmentPreset: (model.environmentPreset as any) || 'STUDIO',
+          backgroundColor: model.backgroundColor,
+          cameraPositionX: model.cameraPositionX ?? 0,
+          cameraPositionY: model.cameraPositionY ?? 1,
+          cameraPositionZ: model.cameraPositionZ ?? 3,
+          cameraTargetX: model.cameraTargetX ?? 0,
+          cameraTargetY: model.cameraTargetY ?? 0.5,
+          cameraTargetZ: model.cameraTargetZ ?? 0,
+          autoRotate: model.autoRotate ?? true,
+          autoRotateSpeed: model.autoRotateSpeed ?? 1,
+          enableZoom: model.enableZoom ?? true,
+          enablePan: model.enablePan ?? true,
+          minDistance: model.minDistance ?? 1,
+          maxDistance: model.maxDistance ?? 10,
+          scale: model.scale ?? 1,
+        },
+      });
+    }
+
     // Fetch and return the complete product
     return this.findOneDetail(product.slug);
   }
-
   // ============================================
   // GET PRODUCT LIST (for category pages)
   // ============================================
@@ -450,12 +481,14 @@ export class ProductsService {
       }
     }
 
+    // Destructure to separate nested relations from base product data
     const {
       images,
       sizes,
       fabricCategories,
       features,
       specifications,
+      model, // ADD THIS - extract model from dto
       ...productData
     } = dto;
 
@@ -604,6 +637,42 @@ export class ProductsService {
             })),
           });
         }
+      }
+    }
+
+    // Update 3D model if provided
+    if (model !== undefined) {
+      // Delete existing model
+      await this.prisma.productModel.deleteMany({ where: { productId: id } });
+
+      // Create new model if provided
+      if (model) {
+        await this.prisma.productModel.create({
+          data: {
+            productId: id,
+            lowPolyUrl: model.lowPolyUrl,
+            highPolyUrl: model.highPolyUrl,
+            format: (model.format as any) || 'GLB',
+            fileSizeLowPoly: model.fileSizeLowPoly,
+            fileSizeHighPoly: model.fileSizeHighPoly,
+            posterUrl: model.posterUrl,
+            environmentPreset: (model.environmentPreset as any) || 'STUDIO',
+            backgroundColor: model.backgroundColor,
+            cameraPositionX: model.cameraPositionX ?? 0,
+            cameraPositionY: model.cameraPositionY ?? 1,
+            cameraPositionZ: model.cameraPositionZ ?? 3,
+            cameraTargetX: model.cameraTargetX ?? 0,
+            cameraTargetY: model.cameraTargetY ?? 0.5,
+            cameraTargetZ: model.cameraTargetZ ?? 0,
+            autoRotate: model.autoRotate ?? true,
+            autoRotateSpeed: model.autoRotateSpeed ?? 1,
+            enableZoom: model.enableZoom ?? true,
+            enablePan: model.enablePan ?? true,
+            minDistance: model.minDistance ?? 1,
+            maxDistance: model.maxDistance ?? 10,
+            scale: model.scale ?? 1,
+          },
+        });
       }
     }
 
@@ -796,6 +865,7 @@ export class ProductsService {
   private getFullProductInclude() {
     return {
       images: { orderBy: { sortOrder: 'asc' } },
+      model: true,
       sizes: { orderBy: { sortOrder: 'asc' } },
       fabricCategories: { orderBy: { sortOrder: 'asc' } },
       fabrics: { orderBy: { sortOrder: 'asc' } },
@@ -956,6 +1026,40 @@ export class ProductsService {
           title: f.title,
           description: f.description,
         })) || [],
+
+      model: product.model
+        ? {
+            id: product.model.id,
+            lowPolyUrl: product.model.lowPolyUrl,
+            highPolyUrl: product.model.highPolyUrl,
+            format: product.model.format,
+            fileSizeLowPoly: product.model.fileSizeLowPoly,
+            fileSizeHighPoly: product.model.fileSizeHighPoly,
+            posterUrl: product.model.posterUrl,
+            environmentPreset: product.model.environmentPreset,
+            backgroundColor: product.model.backgroundColor,
+            cameraPosition: {
+              x: product.model.cameraPositionX,
+              y: product.model.cameraPositionY,
+              z: product.model.cameraPositionZ,
+            },
+            cameraTarget: {
+              x: product.model.cameraTargetX,
+              y: product.model.cameraTargetY,
+              z: product.model.cameraTargetZ,
+            },
+            controls: {
+              autoRotate: product.model.autoRotate,
+              autoRotateSpeed: product.model.autoRotateSpeed,
+              enableZoom: product.model.enableZoom,
+              enablePan: product.model.enablePan,
+              minDistance: product.model.minDistance,
+              maxDistance: product.model.maxDistance,
+            },
+            scale: product.model.scale,
+            isActive: product.model.isActive,
+          }
+        : undefined,
 
       // Specifications
       specifications:
