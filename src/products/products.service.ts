@@ -12,11 +12,6 @@ import {
   ProductListResponseDto,
   ProductListItemResponseDto,
   CategoryMetadataDto,
-  CreateProductImageDto,
-  CreateProductSizeDto,
-  CreateFabricCategoryDto,
-  CreateProductFeatureDto,
-  CreateProductSpecificationDto,
 } from './dto';
 import { Prisma, FurnitureCategory } from '@prisma/client';
 
