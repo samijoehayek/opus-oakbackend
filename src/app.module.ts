@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users';
 import { OrdersModule } from './orders';
 import { ProductsModule } from './products';
+import { UploadsModule } from './uploads/uploads.module';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -14,6 +17,11 @@ import { ProductsModule } from './products';
       isGlobal: true, // Makes ConfigService available everywhere
       envFilePath: '.env', // Path to .env file
       cache: true, // Cache environment variables for performance
+    }),
+
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
     }),
 
     // Rate limiting
@@ -28,6 +36,7 @@ import { ProductsModule } from './products';
     UsersModule,
     OrdersModule,
     ProductsModule,
+    UploadsModule,
   ],
   providers: [
     {
