@@ -9,7 +9,6 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma';
 import { RegisterDto, LoginDto, AuthResponseDto, UserResponseDto } from './dto';
-import { JwtPayload } from './strategies/jwt.strategy';
 
 @Injectable()
 export class AuthService {
@@ -116,6 +115,52 @@ export class AuthService {
   }
 
   /**
+   * Admin login - validates credentials and checks for admin role
+   */
+  async loginAdmin(dto: LoginDto): Promise<AuthResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Check admin role
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+      throw new UnauthorizedException(
+        'Access denied. Admin privileges required.',
+      );
+    }
+
+    // Update last login
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    const tokens = this.generateTokens(user);
+
+    return {
+      ...tokens,
+      user: this.mapUserToResponse(user),
+    };
+  }
+
+  /**
    * Get current user profile
    */
   async getProfile(userId: string): Promise<UserResponseDto> {
@@ -184,7 +229,6 @@ export class AuthService {
       role: user.role,
     };
 
-    // Sign without options - uses global config from JwtModule
     return {
       accessToken: this.jwtService.sign(payload),
     };
