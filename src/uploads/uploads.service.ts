@@ -19,7 +19,7 @@ export class UploadsService {
   constructor() {
     // In production, this would be your CDN/S3 URL
     this.baseUrl =
-      process.env.UPLOADS_BASE_URL || 'http://localhost:3001/uploads';
+      process.env.UPLOADS_BASE_URL || 'http://localhost:8081/uploads';
     this.uploadPath = join(process.cwd(), 'uploads');
   }
 
